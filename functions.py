@@ -2,9 +2,9 @@ import numpy as np
 
 def ip(p,q):
     """
-    p: B batches of N' points in hyperboloid (B,1 or N',n+1,1)
-    q: B batches of N' points in hyperboloid (B,1 or N',n+1,1)
-    out: B batches of inner products of p and q (B,1 or N',1,1)
+    p: B batches of N' points (B,1 or N',n+1,1)
+    q: B batches of N' points (B,1 or N',n+1,1)
+    out: B batches of Minkowski inner products of p and q (B,1 or N',1,1)
     """
     newq=q.copy()
     newq[:,:,0,:]*=-1
@@ -13,8 +13,8 @@ def ip(p,q):
 
 def norm(v):
     """
-    p: B batches of N' vectors (B,N',n+1,1)
-    out: B batches of hyperboloic norms of p (B,N',1,1)
+    v: B batches of N' vectors (B,N',n+1,1)
+    out: B batches of Minkowski norms of v (B,N',1,1)
     """
     out=np.sqrt(np.absolute(ip(v,v)))
     return out
