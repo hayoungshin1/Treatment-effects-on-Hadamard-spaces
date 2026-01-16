@@ -130,7 +130,7 @@ def invbroyden(Y,w,target,tol=1e-6):
         delx=(xcurrent-xold)[:,:,1:,:] #(B,1,n,1)
         Jinvcurrent=Jinvold+np.matmul(((delx-np.matmul(Jinvold,delf))/(np.sum(delf*delf,2,keepdims=True))),np.transpose(delf,(0,1,3,2))) #(B,1,n,n)
         zs=np.zeros((B,1,1,1))
-        xnew=xcurrent-np.concatenate((zs,np.matmul(Jinvcurrent,fcurrent)),axis=2) #(B,1,n,1)
+        xnew=xcurrent-np.concatenate((zs,np.matmul(Jinvcurrent,fcurrent)),axis=2) #(B,1,n+1,1)
         xnew[:,:,0,:]=0 #ensure it is in tangent space at origin
         xold=xcurrent.copy()
         xcurrent=xnew.copy()
