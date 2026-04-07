@@ -1,4 +1,12 @@
 import numpy as np
+import pandas as pd
+import rpy2.robjects as robjects
+from rpy2.robjects import pandas2ri, Formula
+from rpy2.robjects.packages import importr
+from rpy2.robjects.conversion import localconverter
+import warnings
+
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 def ip(p,q):
     """
@@ -29,9 +37,9 @@ def fmean(Y,w,tol=1e-6):
     old=np.expand_dims(old,1) #(B,1,n+1,1)
     current=np.copy(old) #(B,1,n+1,1)
     count=1
-    while count==1 or np.sum(np.arccosh(-ip(old,current))>tol)>0:
+    while count==1 or np.sum(np.arccosh(np.maximum(1,-ip(old,current)))>tol)>0:
         prod=-ip(Y,current) #(B,N,1,1)
-        paran=2*np.arccosh(prod)/np.sqrt(prod**2-1) #(B,N,1,1)
+        paran=2*np.arccosh(np.maximum(1,prod))/np.sqrt(np.abs(prod**2-1)) #(B,N,1,1)
         indices=np.where(np.abs(prod-1)<tol)[0:2]
         paran[indices]=2
         u=w*paran*Y #(B,N,n+1,1)
@@ -96,7 +104,7 @@ def log(p1,p2,tol=1e-6):
     """
     pq=ip(p1,p2) #(B,1,1.1)
     vect=p2+pq*p1 #(B,1,n+1,1)
-    dist=np.arccosh(-pq) #(B,1,1,1)
+    dist=np.arccosh(np.maximum(1,-pq)) #(B,1,1,1)
     out=dist*vect/norm(vect) #(B,1,n+1,1)
     indices=np.where(dist<tol)[0:2]
     out[indices]=0
@@ -139,3 +147,27 @@ def invbroyden(Y,w,target,tol=1e-6):
         count+=1
     out=xcurrent
     return out
+
+matchit_lib = importr('MatchIt')
+
+def run_rank_mahalanobis_full_match(data, treat_col, cov_list):
+    with localconverter(robjects.default_converter + pandas2ri.converter):
+        r_df = robjects.conversion.py2rpy(data)
+    robjects.r.assign("r_df", r_df)
+    r_code = f"""
+    library(MatchIt)
+    m_out <- matchit({treat_col} ~ {' + '.join(cov_list)}, 
+                     data = r_df, 
+                     method = 'full', 
+                     distance = 'glm', 
+                     link = 'logit', 
+                     #caliper = {0.25}, 
+                     mahvars = ~ {' + '.join(cov_list)})
+    
+    # Extract the matched data frame
+    matched_data <- match.data(m_out)
+    """
+    robjects.r(r_code)
+    with localconverter(robjects.default_converter + pandas2ri.converter):
+        matched_df = robjects.conversion.rpy2py(robjects.r['matched_data'])
+    return matched_df
