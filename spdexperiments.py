@@ -180,6 +180,30 @@ window.record(scene=scene, n_frames=1, out_path='Downloads/ateillustration.png',
 
 scene.clear()
 
+# basic divided by standard deviation
+
+np.random.seed(1)
+
+ate=np.squeeze(vectorizer(spdinvbroyden(controlmeans,controlws,spdfmean(treatmentmeans,treatmentws))),axis=1)
+M=1000
+bootates=np.zeros((M,6,1))
+for b in range(M):
+    boottreatmentindices=np.random.choice(Nt,Nt,replace=True)
+    bootcontrolindices=np.random.choice(Nc,Nc,replace=True)
+    boottreatmentmeans=treatmentmeans[:,boottreatmentindices,:,:]
+    bootcontrolmeans=controlmeans[:,bootcontrolindices,:,:]
+    bootates[b,:,:]=vectorizer(spdinvbroyden(bootcontrolmeans,controlws,spdfmean(boottreatmentmeans,treatmentws)))[0,0,:,:]
+
+covinv=np.linalg.inv(np.expand_dims(np.cov(np.squeeze(bootates), rowvar=False),axis=0)) # (1, 6, 6)
+bootstats=np.zeros(M)
+for b in range(M):
+    bootstats[b]=np.squeeze(np.matmul(np.matmul(np.transpose(bootates[b:(b+1),:,:]-ate,(0,2,1)),covinv),bootates[b:(b+1),:,:]-ate))
+
+criticalvalue=np.sort(bootstats)[int(0.95*M)]
+teststatistic=np.squeeze(np.matmul(np.matmul(np.transpose(ate,(0,2,1)),covinv),ate))
+print(teststatistic>criticalvalue)
+np.mean(teststatistic<bootstats)
+
 # test based on studentized bootstrap
 
 ate=np.squeeze(vectorizer(spdinvbroyden(controlmeans,controlws,spdfmean(treatmentmeans,treatmentws))),axis=1)
@@ -211,6 +235,8 @@ print(teststatistic>criticalvalue)
 np.mean(teststatistic<bootstats)
 
 # euclidean comparisons
+
+np.random.seed(1)
 
 controlevals=np.linalg.eig(controlmeans)[0]
 controlfas=np.squeeze(fractional_anisotropy(controlevals))
