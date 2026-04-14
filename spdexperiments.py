@@ -180,7 +180,7 @@ window.record(scene=scene, n_frames=1, out_path='Downloads/ateillustration.png',
 
 scene.clear()
 
-# basic divided by standard deviation
+# bootstrap test
 
 np.random.seed(1)
 
@@ -204,39 +204,7 @@ teststatistic=np.squeeze(np.matmul(np.matmul(np.transpose(ate,(0,2,1)),covinv),a
 print(teststatistic>criticalvalue)
 np.mean(teststatistic<bootstats)
 
-# test based on studentized bootstrap
-
-ate=np.squeeze(vectorizer(spdinvbroyden(controlmeans,controlws,spdfmean(treatmentmeans,treatmentws))),axis=1)
-M1=1000
-M2=1000
-bootstats=np.zeros(M1)
-bootates=np.zeros((M1,6,1))
-nestbootates=np.zeros((M2,6,1))
-for b in range(M1):
-    np.random.seed(b)
-    boottreatmentindices=np.random.choice(Nt,Nt,replace=True)
-    bootcontrolindices=np.random.choice(Nc,Nc,replace=True)
-    boottreatmentmeans=treatmentmeans[:,boottreatmentindices,:,:]
-    bootcontrolmeans=controlmeans[:,bootcontrolindices,:,:]
-    bootates[b,:,:]=vectorizer(spdinvbroyden(bootcontrolmeans,controlws,spdfmean(boottreatmentmeans,treatmentws)))[0,0,:,:]
-    for f in range(M2):
-        nestboottreatmentindices=np.random.choice(Nt,Nt,replace=True)
-        nestbootcontrolindices=np.random.choice(Nc,Nc,replace=True)
-        nestboottreatmentmeans=boottreatmentmeans[:,nestboottreatmentindices,:,:]
-        nestbootcontrolmeans=bootcontrolmeans[:,nestbootcontrolindices,:,:]
-        nestbootates[f,:,:]=vectorizer(spdinvbroyden(nestbootcontrolmeans,controlws,spdfmean(nestboottreatmentmeans,treatmentws)))[0,0,:,:]
-    bootcovinv=np.linalg.inv(np.expand_dims(np.cov(np.squeeze(nestbootates), rowvar=False),axis=0)) # (1, 6, 6)
-    bootstats[b]=np.squeeze(np.matmul(np.matmul(np.transpose(bootates[b:(b+1),:,:]-ate,(0,2,1)),bootcovinv),bootates[b:(b+1),:,:]-ate))
-
-criticalvalue=np.sort(bootstats)[int(0.95*M1)]
-covinv=np.linalg.inv(np.expand_dims(np.cov(np.squeeze(bootates), rowvar=False),axis=0)) # (1, 6, 6)
-teststatistic=np.squeeze(np.matmul(np.matmul(np.transpose(ate,(0,2,1)),covinv),ate))
-print(teststatistic>criticalvalue)
-np.mean(teststatistic<bootstats)
-
 # euclidean comparisons
-
-np.random.seed(1)
 
 controlevals=np.linalg.eig(controlmeans)[0]
 controlfas=np.squeeze(fractional_anisotropy(controlevals))
@@ -251,23 +219,3 @@ mdteststat, mdpval=stats.ttest_ind(controlmds, treatmentmds, equal_var=False)
 
 print(fapval)
 print(mdpval)
-
-treatmentfas=treatmentfas-np.mean(treatmentfas)+np.mean(controlfas) # needed to correctly calculate resample statistics
-treatmentmds=treatmentmds-np.mean(treatmentmds)+np.mean(controlmds)
-
-#bootversion
-#M=10000
-bootfatstats=np.zeros(M)
-bootmdtstats=np.zeros(M)
-for b in range(M):
-    boottreatmentindices=np.random.choice(Nt,Nt,replace=True)
-    bootcontrolindices=np.random.choice(Nc,Nc,replace=True)
-    boottreatmentfas=treatmentfas[boottreatmentindices]
-    bootcontrolfas=controlfas[bootcontrolindices]
-    boottreatmentmds=treatmentmds[boottreatmentindices]
-    bootcontrolmds=controlmds[bootcontrolindices]
-    bootfatstats[b]=stats.ttest_ind(bootcontrolfas,boottreatmentfas, equal_var=False)[0]
-    bootmdtstats[b]=stats.ttest_ind(bootcontrolmds,boottreatmentmds, equal_var=False)[0]
-
-print(np.mean(abs(fateststat)<abs(bootfatstats)))
-print(np.mean(abs(mdteststat)<abs(bootmdtstats)))
