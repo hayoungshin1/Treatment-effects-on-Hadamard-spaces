@@ -138,7 +138,7 @@ OSexpcounter2=[0,0,0,0]
 for j in range(4):
     N=Ns[j]
     for k in range(1000):
-        np.random.seed(10000*j+k)
+        np.random.seed(1000*j+k)
         covariates=np.random.uniform(size=(1,N,2,1))-0.5 #(1,N,2,1)
         Z=np.zeros((1,N,1,1))
         S=np.zeros((1,N,1,1))
