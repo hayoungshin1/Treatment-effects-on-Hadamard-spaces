@@ -76,7 +76,6 @@ postcontrolmeans=spdexp(controlmeanshalf,controlmeanshalfinv,spdfp(controlmeansh
 
 ## illustration of this ate
  
-# Eigendecompositions for each set of 26 means (shape (1,26,3,3) -> flat (26,3) and (26,3,3))
 control_evals_flat, control_evecs_flat = np.linalg.eig(controlmeans[0])
 post_evals_flat, post_evecs_flat = np.linalg.eig(postcontrolmeans[0])
 control_evals_flat = control_evals_flat.real
@@ -84,19 +83,11 @@ control_evecs_flat = control_evecs_flat.real
 post_evals_flat = post_evals_flat.real
 post_evecs_flat = post_evecs_flat.real
  
-# Shared scale: divide every eigenvalue (in both images) by the global max
 global_max = max(np.max(control_evals_flat), np.max(post_evals_flat))
 control_evals_flat = control_evals_flat / global_max
 post_evals_flat = post_evals_flat / global_max
  
 def build_grid(evals_flat, evecs_flat):
-    """
-    Lay 26 ellipsoids into a 4-row x 7-column grid, filled row-major from the
-    top-left. Bottom-left and bottom-right cells are left empty (zero eigenvalues
-    -> tensor_slicer renders nothing there). Returns evals of shape (7,4,1,3)
-    and evecs of shape (7,4,1,3,3) in tensor_slicer's (X,Y,Z,...) convention,
-    with Y=3 at the top and Y=0 at the bottom.
-    """
     evals_grid = np.zeros((7, 4, 1, 3))
     evecs_grid = np.zeros((7, 4, 1, 3, 3))
     evecs_grid[..., :, :] = np.eye(3)
