@@ -76,7 +76,7 @@ postcontrolmeans=spdexp(controlmeanshalf,controlmeanshalfinv,spdfp(controlmeansh
 
 # illustration of this ate
 
-meanevals, meanevecs=np.linalg.eig(np.expand_dims(np.transpose(np.concatenate((controlmeans,postcontrolmeans),axis=0),(1,0,2,3)),2))
+meanevals, meanevecs=np.linalg.eig(np.expand_dims(np.transpose(np.concatenate((postcontrolmeans,controlmeans),axis=0),(1,0,2,3)),2))
 meanevals=meanevals.real
 meanevals/=np.max(meanevals)
 meanevecs=meanevecs.real
