@@ -74,38 +74,69 @@ controlmeanshalfinv=np.linalg.inv(controlmeanshalf)
 eyes=np.expand_dims(np.eye(3),(0,1))
 postcontrolmeans=spdexp(controlmeanshalf,controlmeanshalfinv,spdfp(controlmeanshalf, controlmeanshalfinv, eyes, eyes, ate))
 
-# illustration of this ate
-
-meanevals, meanevecs=np.linalg.eig(np.expand_dims(np.transpose(np.concatenate((postcontrolmeans,controlmeans),axis=0),(1,0,2,3)),2))
-meanevals=meanevals.real
-meanevals/=np.max(meanevals)
-meanevecs=meanevecs.real
-#meanevals=meanevals[0:1,:,:,:]
-#meanevecs=meanevecs[0:1,:,:,:,:]
-
-FA = fractional_anisotropy(meanevals)
-FA[np.isnan(FA)] = 0
-FA = np.clip(FA, 0, 1)
-RGB = color_fa(FA, meanevecs)
-
+## illustration of this ate
+ 
+# Eigendecompositions for each set of 26 means (shape (1,26,3,3) -> flat (26,3) and (26,3,3))
+control_evals_flat, control_evecs_flat = np.linalg.eig(controlmeans[0])
+post_evals_flat, post_evecs_flat = np.linalg.eig(postcontrolmeans[0])
+control_evals_flat = control_evals_flat.real
+control_evecs_flat = control_evecs_flat.real
+post_evals_flat = post_evals_flat.real
+post_evecs_flat = post_evecs_flat.real
+ 
+# Shared scale: divide every eigenvalue (in both images) by the global max
+global_max = max(np.max(control_evals_flat), np.max(post_evals_flat))
+control_evals_flat = control_evals_flat / global_max
+post_evals_flat = post_evals_flat / global_max
+ 
+def build_grid(evals_flat, evecs_flat):
+    """
+    Lay 26 ellipsoids into a 4-row x 7-column grid, filled row-major from the
+    top-left. Bottom-left and bottom-right cells are left empty (zero eigenvalues
+    -> tensor_slicer renders nothing there). Returns evals of shape (7,4,1,3)
+    and evecs of shape (7,4,1,3,3) in tensor_slicer's (X,Y,Z,...) convention,
+    with Y=3 at the top and Y=0 at the bottom.
+    """
+    evals_grid = np.zeros((7, 4, 1, 3))
+    evecs_grid = np.zeros((7, 4, 1, 3, 3))
+    evecs_grid[..., :, :] = np.eye(3)
+    for i in range(26):
+        if i < 21:
+            row = i // 7        
+            col = i % 7         
+        else:
+            row = 3             
+            col = (i - 21) + 1  
+        x = col
+        y = 3 - row             
+        evals_grid[x, y, 0, :] = evals_flat[i]
+        evecs_grid[x, y, 0, :, :] = evecs_flat[i]
+    return evals_grid, evecs_grid
+ 
+control_evals_grid, control_evecs_grid = build_grid(control_evals_flat, control_evecs_flat)
+post_evals_grid, post_evecs_grid = build_grid(post_evals_flat, post_evecs_flat)
+ 
 sphere = get_sphere(name="repulsion724")
-
+ 
 interactive = False
-
-scene = window.Scene()
-
-cfa = RGB/RGB.max()
-
-scene.add(
-    actor.tensor_slicer(meanevals, meanevecs, scalar_colors=cfa, sphere=sphere, scale=0.5, norm=False)
-)
-scene.background((255,255,255))
-
-window.show(scene)
-
-window.record(scene=scene, n_frames=1, out_path='Downloads/ateillustration.png', size=(2000, 2000))
-
-scene.clear()
+ 
+def render_grid(evals_grid, evecs_grid, out_path):
+    FA = fractional_anisotropy(evals_grid)
+    FA[np.isnan(FA)] = 0
+    FA = np.clip(FA, 0, 1)
+    RGB = color_fa(FA, evecs_grid)
+    cfa = RGB / RGB.max()
+    scene = window.Scene()
+    scene.add(
+        actor.tensor_slicer(evals_grid, evecs_grid, scalar_colors=cfa, sphere=sphere, scale=0.5, norm=False)
+    )
+    scene.background((255, 255, 255))
+    window.show(scene)
+    window.record(scene=scene, n_frames=1, out_path=out_path, size=(2000, 2000))
+    scene.clear()
+ 
+render_grid(control_evals_grid, control_evecs_grid, 'Downloads/controlmeans.png')
+render_grid(post_evals_grid, post_evecs_grid, 'Downloads/postcontrolmeans.png')
 
 # bootstrap test
 
