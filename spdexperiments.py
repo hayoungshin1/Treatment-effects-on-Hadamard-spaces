@@ -76,58 +76,67 @@ postcontrolmeans=spdexp(controlmeanshalf,controlmeanshalfinv,spdfp(controlmeansh
 
 ## illustration of this ate
  
-control_evals_flat, control_evecs_flat = np.linalg.eig(controlmeans[0])
-post_evals_flat, post_evecs_flat = np.linalg.eig(postcontrolmeans[0])
-control_evals_flat = control_evals_flat.real
-control_evecs_flat = control_evecs_flat.real
-post_evals_flat = post_evals_flat.real
-post_evecs_flat = post_evecs_flat.real
+controlevals, controlevecs=np.linalg.eig(controlmeans)
+controlevals=controlevals.real
+controlevecs=controlevecs.real
+postcontrolevals, postcontrolevecs=np.linalg.eig(postcontrolmeans)
+postcontrolevals=postcontrolevals.real
+postcontrolevecs=postcontrolevecs.real
  
-global_max = max(np.max(control_evals_flat), np.max(post_evals_flat))
-control_evals_flat = control_evals_flat / global_max
-post_evals_flat = post_evals_flat / global_max
+globalmax=max(np.max(controlevals),np.max(postcontrolevals))
+controlevals/=globalmax
+postcontrolevals/=globalmax
  
-def build_grid(evals_flat, evecs_flat):
-    evals_grid = np.zeros((7, 4, 1, 3))
-    evecs_grid = np.zeros((7, 4, 1, 3, 3))
-    evecs_grid[..., :, :] = np.eye(3)
-    for i in range(26):
-        if i < 21:
-            row = i // 7        
-            col = i % 7         
-        else:
-            row = 3             
-            col = (i - 21) + 1  
-        x = col
-        y = 3 - row             
-        evals_grid[x, y, 0, :] = evals_flat[i]
-        evecs_grid[x, y, 0, :, :] = evecs_flat[i]
-    return evals_grid, evecs_grid
+# pack the 26 ellipsoids into a 4-row by 7-col grid filled row-major from the top-left, leaving the bottom-left and bottom-right cells empty
+controlgridevals=np.zeros((28,3))
+controlgridevals[:21]=controlevals[0,:21]
+controlgridevals[22:27]=controlevals[0,21:]
+controlgridevals=np.expand_dims(controlgridevals.reshape(4,7,3)[::-1].transpose(1,0,2),2) # (7,4,1,3)
+controlgridevecs=np.zeros((28,3,3))
+controlgridevecs[:21]=controlevecs[0,:21]
+controlgridevecs[22:27]=controlevecs[0,21:]
+controlgridevecs=np.expand_dims(controlgridevecs.reshape(4,7,3,3)[::-1].transpose(1,0,2,3),2) # (7,4,1,3,3)
  
-control_evals_grid, control_evecs_grid = build_grid(control_evals_flat, control_evecs_flat)
-post_evals_grid, post_evecs_grid = build_grid(post_evals_flat, post_evecs_flat)
+postcontrolgridevals=np.zeros((28,3))
+postcontrolgridevals[:21]=postcontrolevals[0,:21]
+postcontrolgridevals[22:27]=postcontrolevals[0,21:]
+postcontrolgridevals=np.expand_dims(postcontrolgridevals.reshape(4,7,3)[::-1].transpose(1,0,2),2)
+postcontrolgridevecs=np.zeros((28,3,3))
+postcontrolgridevecs[:21]=postcontrolevecs[0,:21]
+postcontrolgridevecs[22:27]=postcontrolevecs[0,21:]
+postcontrolgridevecs=np.expand_dims(postcontrolgridevecs.reshape(4,7,3,3)[::-1].transpose(1,0,2,3),2)
  
 sphere = get_sphere(name="repulsion724")
  
 interactive = False
  
-def render_grid(evals_grid, evecs_grid, out_path):
-    FA = fractional_anisotropy(evals_grid)
-    FA[np.isnan(FA)] = 0
-    FA = np.clip(FA, 0, 1)
-    RGB = color_fa(FA, evecs_grid)
-    cfa = RGB / RGB.max()
-    scene = window.Scene()
-    scene.add(
-        actor.tensor_slicer(evals_grid, evecs_grid, scalar_colors=cfa, sphere=sphere, scale=0.5, norm=False)
-    )
-    scene.background((255, 255, 255))
-    window.show(scene)
-    window.record(scene=scene, n_frames=1, out_path=out_path, size=(2000, 2000))
-    scene.clear()
+FA = fractional_anisotropy(controlgridevals)
+FA[np.isnan(FA)] = 0
+FA = np.clip(FA, 0, 1)
+RGB = color_fa(FA, controlgridevecs)
+cfa = RGB/RGB.max()
+scene = window.Scene()
+scene.add(
+    actor.tensor_slicer(controlgridevals, controlgridevecs, scalar_colors=cfa, sphere=sphere, scale=0.5, norm=False)
+)
+scene.background((255,255,255))
+window.show(scene)
+window.record(scene=scene, n_frames=1, out_path='Downloads/controlmeans.png', size=(2000, 2000))
+scene.clear()
  
-render_grid(control_evals_grid, control_evecs_grid, 'Downloads/controlmeans.png')
-render_grid(post_evals_grid, post_evecs_grid, 'Downloads/postcontrolmeans.png')
+FA = fractional_anisotropy(postcontrolgridevals)
+FA[np.isnan(FA)] = 0
+FA = np.clip(FA, 0, 1)
+RGB = color_fa(FA, postcontrolgridevecs)
+cfa = RGB/RGB.max()
+scene = window.Scene()
+scene.add(
+    actor.tensor_slicer(postcontrolgridevals, postcontrolgridevecs, scalar_colors=cfa, sphere=sphere, scale=0.5, norm=False)
+)
+scene.background((255,255,255))
+window.show(scene)
+window.record(scene=scene, n_frames=1, out_path='Downloads/postcontrolmeans.png', size=(2000, 2000))
+scene.clear()
 
 # bootstrap test
 
